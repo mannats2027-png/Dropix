@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Download {{ file.original_filename }} - Dropix</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {"50":"#eff6ff","100":"#dbeafe","200":"#bfdbfe","300":"#93c5fd","400":"#60a5fa","500":"#3b82f6","600":"#2563eb","700":"#1d4ed8","800":"#1e40af","900":"#1e3a8a","950":"#172554"}
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { 
+            font-family: 'Inter', sans-serif; 
+        }
+        .glass { 
+            background-color: rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary-100 via-slate-50 to-slate-50 text-slate-800">
+    
+    <div class="max-w-md w-full glass rounded-2xl p-8 text-center relative overflow-hidden">
+        <!-- Decoration -->
+        <div class="absolute -top-10 -right-10 w-32 h-32 bg-primary-200 rounded-full blur-2xl opacity-50"></div>
+        <div class="absolute -bottom-10 -left-10 w-32 h-32 bg-indigo-200 rounded-full blur-2xl opacity-50"></div>
+        
+        <div class="relative z-10">
+            <div class="w-20 h-20 bg-gradient-to-tr from-primary-500 to-indigo-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-primary-500/30">
+                {% if file.file_type in ['jpg', 'jpeg', 'png', 'gif', 'svg'] %}
+                    <i class="fa-solid fa-image text-white text-3xl"></i>
+                {% elif file.file_type in ['pdf'] %}
+                    <i class="fa-solid fa-file-pdf text-white text-3xl"></i>
+                {% elif file.file_type in ['mp4', 'avi', 'mov'] %}
+                    <i class="fa-solid fa-video text-white text-3xl"></i>
+                {% else %}
+                    <i class="fa-solid fa-file text-white text-3xl"></i>
+                {% endif %}
+            </div>
+            
+            <h1 class="text-xl font-bold text-slate-900 mb-2 truncate" title="{{ file.original_filename }}">{{ file.original_filename }}</h1>
+            <p class="text-slate-500 text-sm mb-8">Size: {{ file.file_size|format_size }} • Shared by: {{ file.owner.username }}</p>
+            
+            <a href="{{ url_for('download_shared', share_link=file.share_link) }}" class="block w-full py-3 px-4 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-medium transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5">
+                <i class="fa-solid fa-download mr-2"></i> Download File
+            </a>
+            
+            <div class="mt-8 pt-6 border-t border-slate-200">
+                <a href="{{ url_for('index') }}" class="text-sm text-slate-500 hover:text-primary-600 transition-colors flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-cloud"></i> Powered by Dropix
+                </a>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

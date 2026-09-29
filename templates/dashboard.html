@@ -1,0 +1,269 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8" x-data="dashboard()">
+    <!-- Dashboard Header -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-900 dark:text-white">My Files</h1>
+            <p class="text-sm text-slate-500 dark:text-slate-400">Manage and share your uploaded content</p>
+        </div>
+        <div class="flex items-center gap-3">
+            <div class="relative">
+                <i class="fa-solid fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
+                <input type="text" x-model="searchQuery" placeholder="Search files..." class="pl-10 pr-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 w-full md:w-64 transition-colors">
+            </div>
+            <button @click="$refs.fileInput.click()" class="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium text-sm flex items-center gap-2 transition-colors shadow-md">
+                <i class="fa-solid fa-cloud-arrow-up"></i> Upload
+            </button>
+            <form action="{{ url_for('upload_file') }}" method="POST" enctype="multipart/form-data" class="hidden" x-ref="uploadForm">
+                <input type="file" name="file" x-ref="fileInput" @change="$refs.uploadForm.submit()">
+            </form>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        <!-- Sidebar (Storage info) -->
+        <div class="lg:col-span-1 space-y-6">
+            <div class="glass p-6 rounded-2xl">
+                <h3 class="text-sm font-semibold text-slate-900 dark:text-white uppercase tracking-wider mb-4">Storage Usage</h3>
+                <div class="mb-2 flex justify-between text-sm">
+                    <span class="font-medium text-slate-700 dark:text-slate-300">{{ total_size|format_size }}</span>
+                    <span class="text-slate-500">{{ storage_limit|format_size }}</span>
+                </div>
+                <div class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5 mb-4 overflow-hidden">
+                    <div class="bg-gradient-to-r from-primary-500 to-indigo-500 h-2.5 rounded-full" style="width: {{ storage_percentage }}%"></div>
+                </div>
+                <p class="text-xs text-slate-500 dark:text-slate-400">
+                    You have used {{ "%.1f"|format(storage_percentage) }}% of your total storage capacity.
+                </p>
+                <a href="#" class="mt-4 block text-center text-sm text-primary-600 hover:text-primary-700 font-medium">Upgrade Plan</a>
+            </div>
+
+            <!-- Categories -->
+            <div class="glass p-6 rounded-2xl">
+                <h3 class="text-sm font-semibold text-slate-900 dark:text-white uppercase tracking-wider mb-4">Categories</h3>
+                <ul class="space-y-2">
+                    <li>
+                        <button @click="filterType = ''" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors" :class="filterType === '' ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400' : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'">
+                            <i class="fa-solid fa-folder-open w-5 text-center"></i> All Files
+                        </button>
+                    </li>
+                    <li>
+                        <button @click="filterType = 'image'" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300" :class="{'bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400': filterType === 'image'}">
+                            <i class="fa-solid fa-image w-5 text-center text-blue-500"></i> Images
+                        </button>
+                    </li>
+                    <li>
+                        <button @click="filterType = 'document'" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300" :class="{'bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400': filterType === 'document'}">
+                            <i class="fa-solid fa-file-lines w-5 text-center text-blue-500"></i> Documents
+                        </button>
+                    </li>
+                    <li>
+                        <button @click="filterType = 'video'" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300" :class="{'bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400': filterType === 'video'}">
+                            <i class="fa-solid fa-video w-5 text-center text-purple-500"></i> Videos
+                        </button>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Files Area -->
+        <div class="lg:col-span-3">
+            <!-- Drag and Drop Upload Area -->
+            <div class="mb-8 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-2xl p-10 text-center hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer group"
+                 @dragover.prevent="$el.classList.add('border-primary-500', 'bg-primary-50', 'dark:bg-primary-900/10')"
+                 @dragleave.prevent="$el.classList.remove('border-primary-500', 'bg-primary-50', 'dark:bg-primary-900/10')"
+                 @drop.prevent="handleDrop($event, $el)"
+                 @click="$refs.fileInput.click()">
+                <div class="w-16 h-16 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
+                    <i class="fa-solid fa-cloud-arrow-up text-2xl text-primary-600 dark:text-primary-400"></i>
+                </div>
+                <h3 class="text-lg font-medium text-slate-900 dark:text-white mb-1">Click or drag files here to upload</h3>
+                <p class="text-sm text-slate-500 dark:text-slate-400">Support for a single or bulk upload. Strictly prohibit from uploading company data or other band files.</p>
+            </div>
+
+            <!-- Files Grid/List -->
+            <div class="glass rounded-2xl overflow-hidden">
+                {% if files %}
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm text-slate-500 dark:text-slate-400">
+                        <thead class="text-xs text-slate-700 dark:text-slate-300 uppercase bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700">
+                            <tr>
+                                <th scope="col" class="px-6 py-4 font-medium">Name</th>
+                                <th scope="col" class="px-6 py-4 font-medium">Size</th>
+                                <th scope="col" class="px-6 py-4 font-medium">Date Modified</th>
+                                <th scope="col" class="px-6 py-4 font-medium text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for file in files %}
+                            <tr class="border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors file-row" 
+                                data-name="{{ file.original_filename|lower }}" 
+                                data-type="{{ file.file_type|lower }}">
+                                <td class="px-6 py-4 font-medium text-slate-900 dark:text-white flex items-center gap-3">
+                                    {% if file.file_type in ['jpg', 'jpeg', 'png', 'gif', 'svg'] %}
+                                        <i class="fa-solid fa-image text-blue-500 text-xl"></i>
+                                    {% elif file.file_type in ['pdf'] %}
+                                        <i class="fa-solid fa-file-pdf text-red-500 text-xl"></i>
+                                    {% elif file.file_type in ['doc', 'docx', 'txt'] %}
+                                        <i class="fa-solid fa-file-lines text-blue-400 text-xl"></i>
+                                    {% elif file.file_type in ['mp4', 'avi', 'mov'] %}
+                                        <i class="fa-solid fa-video text-purple-500 text-xl"></i>
+                                    {% elif file.file_type in ['zip', 'rar', 'tar', 'gz'] %}
+                                        <i class="fa-solid fa-file-zipper text-amber-500 text-xl"></i>
+                                    {% else %}
+                                        <i class="fa-solid fa-file text-slate-500 text-xl"></i>
+                                    {% endif %}
+                                    <span class="truncate max-w-[200px]" title="{{ file.original_filename }}">{{ file.original_filename }}</span>
+                                </td>
+                                <td class="px-6 py-4">{{ file.file_size|format_size }}</td>
+                                <td class="px-6 py-4">{{ file.upload_date.strftime('%b %d, %Y') }}</td>
+                                <td class="px-6 py-4 text-right">
+                                    <div class="flex items-center justify-end gap-2">
+                                        <a href="{{ url_for('download_file', file_id=file.id) }}" class="p-2 text-slate-400 hover:text-primary-600 transition-colors tooltip" title="Download">
+                                            <i class="fa-solid fa-download"></i>
+                                        </a>
+                                        <button @click="shareFile({{ file.id }})" class="p-2 text-slate-400 hover:text-green-500 transition-colors tooltip" title="Share">
+                                            <i class="fa-solid fa-share-nodes"></i>
+                                        </button>
+                                        <form action="{{ url_for('delete_file', file_id=file.id) }}" method="POST" class="inline" onsubmit="return confirm('Are you sure you want to delete this file?');">
+                                            <button type="submit" class="p-2 text-slate-400 hover:text-red-500 transition-colors tooltip" title="Delete">
+                                                <i class="fa-solid fa-trash-can"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="p-12 text-center flex flex-col items-center justify-center">
+                    <img src="https://illustrations.popsy.co/amber/surreal-hourglass.svg" alt="No files" class="w-48 h-48 opacity-70 mb-4 dark:invert">
+                    <h3 class="text-lg font-medium text-slate-900 dark:text-white mb-1">No files found</h3>
+                    <p class="text-sm text-slate-500 dark:text-slate-400">Upload some files to get started.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Share Modal -->
+    <div x-show="showShareModal" class="fixed inset-0 z-50 overflow-y-auto" style="display: none;" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div x-show="showShareModal" x-transition.opacity class="fixed inset-0 bg-slate-900/75 backdrop-blur-sm transition-opacity" aria-hidden="true" @click="showShareModal = false"></div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+            <div x-show="showShareModal" 
+                 x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100" x-transition:leave="ease-in duration-200" x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100" x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" 
+                 class="inline-block align-bottom bg-white dark:bg-slate-800 rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full border border-slate-200 dark:border-slate-700">
+                <div class="px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                    <div class="sm:flex sm:items-start">
+                        <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-green-100 dark:bg-green-900/30 sm:mx-0 sm:h-10 sm:w-10">
+                            <i class="fa-solid fa-link text-green-600 dark:text-green-400"></i>
+                        </div>
+                        <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+                            <h3 class="text-lg leading-6 font-medium text-slate-900 dark:text-white" id="modal-title">Share File</h3>
+                            <div class="mt-2">
+                                <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">Anyone with this link will be able to download the file.</p>
+                                <div class="flex mt-1 rounded-md shadow-sm">
+                                    <input type="text" readonly :value="shareLink" id="shareLinkInput" class="flex-1 min-w-0 block w-full px-3 py-2 rounded-none rounded-l-md focus:ring-primary-500 focus:border-primary-500 sm:text-sm border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-300">
+                                    <button @click="copyLink" class="inline-flex items-center px-4 py-2 border border-l-0 border-slate-300 dark:border-slate-600 rounded-r-md bg-slate-50 dark:bg-slate-700 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors">
+                                        <i class="fa-regular fa-copy mr-2"></i> <span x-text="copied ? 'Copied!' : 'Copy'"></span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-slate-50 dark:bg-slate-800/80 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse border-t border-slate-200 dark:border-slate-700">
+                    <button type="button" @click="showShareModal = false" class="w-full inline-flex justify-center rounded-md border border-slate-300 dark:border-slate-600 shadow-sm px-4 py-2 bg-white dark:bg-slate-700 text-base font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-600 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm transition-colors">
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('alpine:init', () => {
+        Alpine.data('dashboard', () => ({
+            searchQuery: '',
+            filterType: '',
+            showShareModal: false,
+            shareLink: '',
+            copied: false,
+
+            init() {
+                this.$watch('searchQuery', () => this.filterFiles());
+                this.$watch('filterType', () => this.filterFiles());
+            },
+
+            filterFiles() {
+                const query = (this.searchQuery || '').toLowerCase();
+                const rows = document.querySelectorAll('.file-row');
+                
+                rows.forEach(row => {
+                    const name = (row.dataset.name || '').toLowerCase();
+                    const type = (row.dataset.type || '').toLowerCase();
+                    const matchesSearch = name.includes(query);
+                    
+                    let matchesType = true;
+                    if (this.filterType === 'image') matchesType = ['jpg', 'jpeg', 'png', 'gif', 'svg'].includes(type);
+                    else if (this.filterType === 'document') matchesType = ['doc', 'docx', 'txt', 'pdf'].includes(type);
+                    else if (this.filterType === 'video') matchesType = ['mp4', 'avi', 'mov'].includes(type);
+                    
+                    if (matchesSearch && matchesType) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+            },
+
+            handleDrop(e, el) {
+                el.classList.remove('border-primary-500', 'bg-primary-50', 'dark:bg-primary-900/10');
+                if (e.dataTransfer.files.length > 0) {
+                    this.$refs.fileInput.files = e.dataTransfer.files;
+                    this.$refs.uploadForm.submit();
+                }
+            },
+
+            shareFile(fileId) {
+                fetch(`/share/${fileId}`, { method: 'POST' })
+                    .then(res => res.json())
+                    .then(data => {
+                        this.shareLink = data.share_url;
+                        this.copied = false;
+                        this.showShareModal = true;
+                    });
+            },
+
+            copyLink() {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(this.shareLink).then(() => {
+                        this.copied = true;
+                        setTimeout(() => this.copied = false, 2000);
+                    }).catch(() => {
+                        this.fallbackCopy();
+                    });
+                } else {
+                    this.fallbackCopy();
+                }
+            },
+
+            fallbackCopy() {
+                const input = document.getElementById('shareLinkInput');
+                if (input) {
+                    input.select();
+                    document.execCommand('copy');
+                    this.copied = true;
+                    setTimeout(() => this.copied = false, 2000);
+                }
+            }
+        }));
+    });
+</script>
+{% endblock %}
